@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  overflow-x: hidden; /* Mencegah scroll ke samping pada level halaman utama */
+  width: 100%;
+  position: relative;
+  font-family: "Inter", sans-serif;
+  background-color: #f8fafc;
+}
