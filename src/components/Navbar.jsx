@@ -119,7 +119,7 @@ const Navbar = () => {
               </Link>
 
               <a
-                href="https://smkdiponegoro1.sch.id"
+                href="https://smkdipo1jkt.vercel.app"
                 target="_blank"
                 rel="noreferrer"
                 className={`px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${
@@ -195,10 +195,10 @@ const Navbar = () => {
               className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
             >
               <LogIn size={18} />
-              Login Admin / Alumni
+              Login Admin
             </Link>
             <a
-              href="https://smkdiponegoro1.sch.id"
+              href="https://smkdipo1jkt.vercel.app"
               target="_blank"
               rel="noreferrer"
               className="w-full py-3.5 rounded-xl bg-violet-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-violet-700 shadow-lg shadow-violet-200 transition-colors"

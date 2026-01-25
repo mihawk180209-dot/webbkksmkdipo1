@@ -60,12 +60,81 @@ const FormKegiatan = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+  // --- HELPER: CONVERT KE WEBP ---
+  const convertImageToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        // Convert ke WebP, Quality 0.8 (80%)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const newFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, "") + ".webp",
+                {
+                  type: "image/webp",
+                  lastModified: Date.now(),
+                },
+              );
+              resolve(newFile);
+            } else {
+              reject(new Error("Gagal konversi gambar"));
+            }
+          },
+          "image/webp",
+          0.8,
+        );
+      };
+      img.onerror = (error) => reject(error);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // --- HELPER: HAPUS GAMBAR LAMA ---
+  const deleteOldImage = async (url) => {
+    if (!url) return;
+    // Cek bucket 'kegiatan-images'
+    if (url.includes("/kegiatan-images/")) {
+      const filePath = url.split("/kegiatan-images/")[1];
+      if (filePath) {
+        await supabase.storage.from("kegiatan-images").remove([filePath]);
+      }
     }
+  };
+
+  const handleFileChange = (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+
+    // 1. Cek Tipe File
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert(
+        "⛔ Format salah! Mohon hanya upload file gambar (JPG, PNG, WEBP).",
+      );
+      e.target.value = "";
+      return;
+    }
+
+    // 2. Cek Ukuran File (Max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("⚠️ File terlalu besar! Maksimal ukuran file adalah 10MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -74,55 +143,71 @@ const FormKegiatan = () => {
 
     let finalImageUrl = currentImage;
 
-    if (imageFile) {
-      const fileName = `event_${Date.now()}_${imageFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("kegiatan-images")
-        .upload(fileName, imageFile);
+    try {
+      // Jika ada file baru yang diupload
+      if (imageFile) {
+        // 1. Hapus gambar lama jika mode edit
+        if (id && currentImage) {
+          await deleteOldImage(currentImage);
+        }
 
-      if (uploadError) {
-        alert("Gagal upload gambar: " + uploadError.message);
-        setUploading(false);
-        return;
+        // 2. Convert gambar ke WebP
+        const webpFile = await convertImageToWebP(imageFile);
+
+        // 3. Buat nama file unik .webp
+        const fileName = `event_${Date.now()}_${Math.random().toString(36).substring(2)}.webp`;
+
+        // 4. Upload ke Supabase
+        const { error: uploadError } = await supabase.storage
+          .from("kegiatan-images")
+          .upload(fileName, webpFile, {
+            contentType: "image/webp",
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error("Gagal upload gambar: " + uploadError.message);
+        }
+
+        // 5. Dapatkan URL
+        const { data: urlData } = supabase.storage
+          .from("kegiatan-images")
+          .getPublicUrl(fileName);
+
+        finalImageUrl = urlData.publicUrl;
       }
 
-      const { data: urlData } = supabase.storage
-        .from("kegiatan-images")
-        .getPublicUrl(fileName);
+      const payload = {
+        nama_event: formData.nama_event,
+        tanggal_event: formData.tanggal_event,
+        jam_mulai: formData.jam_mulai,
+        jam_selesai: formData.jam_selesai,
+        lokasi: formData.lokasi,
+        deskripsi: formData.deskripsi,
+        image_url: finalImageUrl,
+      };
 
-      finalImageUrl = urlData.publicUrl;
-    }
+      let dbError;
+      if (id) {
+        const { error } = await supabase
+          .from("kegiatan")
+          .update(payload)
+          .eq("id", id);
+        dbError = error;
+      } else {
+        const { error } = await supabase.from("kegiatan").insert([payload]);
+        dbError = error;
+      }
 
-    const payload = {
-      nama_event: formData.nama_event,
-      tanggal_event: formData.tanggal_event,
-      jam_mulai: formData.jam_mulai,
-      jam_selesai: formData.jam_selesai,
-      lokasi: formData.lokasi,
-      deskripsi: formData.deskripsi,
-      image_url: finalImageUrl,
-    };
+      if (dbError) throw dbError;
 
-    let error;
-    if (id) {
-      const { error: updateError } = await supabase
-        .from("kegiatan")
-        .update(payload)
-        .eq("id", id);
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from("kegiatan")
-        .insert([payload]);
-      error = insertError;
-    }
-
-    if (error) {
-      alert("Gagal simpan: " + error.message);
-    } else {
       navigate("/admin/kegiatan");
+    } catch (error) {
+      alert("Gagal menyimpan: " + error.message);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   if (loadingData)
@@ -286,7 +371,7 @@ const FormKegiatan = () => {
           {/* Panel Upload Gambar */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <label className="block text-sm font-semibold text-slate-700 mb-3">
-              Poster / Banner Event
+              Poster / Banner Event (Auto WebP)
             </label>
 
             <div className="relative group">
@@ -319,7 +404,7 @@ const FormKegiatan = () => {
                       Klik untuk upload
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Mendukung JPG, PNG
+                      Mendukung JPG, PNG (Auto WebP)
                     </p>
                   </div>
                 )}

@@ -12,10 +12,10 @@ import {
 const ManageMitra = () => {
   const [mitraList, setMitraList] = useState([]);
   const [newName, setNewName] = useState("");
-  const [logoFile, setLogoFile] = useState(null); // State untuk file gambar
+  const [logoFile, setLogoFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef(null); // Ref untuk reset input file
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchMitra();
@@ -33,11 +33,58 @@ const ManageMitra = () => {
     setLoading(false);
   };
 
-  // --- LOGIKA UPLOAD FILE ---
+  // --- HELPER 1: CONVERT KE WEBP ---
+  const convertImageToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        // Convert ke WebP, Quality 0.8
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const newFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, "") + ".webp",
+                {
+                  type: "image/webp",
+                  lastModified: Date.now(),
+                },
+              );
+              resolve(newFile);
+            } else {
+              reject(new Error("Gagal konversi gambar"));
+            }
+          },
+          "image/webp",
+          0.8,
+        );
+      };
+      img.onerror = (error) => reject(error);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // --- HELPER 2: HAPUS FILE DARI STORAGE ---
+  const deleteFileFromStorage = async (url) => {
+    if (!url) return;
+    // Cek apakah url mengandung nama bucket 'mitra-logos'
+    if (url.includes("/mitra-logos/")) {
+      const filePath = url.split("/mitra-logos/")[1];
+      if (filePath) {
+        await supabase.storage.from("mitra-logos").remove([filePath]);
+      }
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validasi sederhana tipe file
       if (!file.type.startsWith("image/")) {
         alert("Mohon pilih file gambar (JPG, PNG, dsb).");
         return;
@@ -45,29 +92,6 @@ const ManageMitra = () => {
       setLogoFile(file);
     }
   };
-
-  const uploadLogo = async (file) => {
-    // Membuat nama file unik (timestamp + nama asli dibersihkan)
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
-
-    // Upload ke bucket 'mitra-logos'
-    const { error: uploadError } = await supabase.storage
-      .from("mitra-logos")
-      .upload(filePath, file);
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    // Ambil URL publik setelah berhasil upload
-    const { data } = supabase.storage
-      .from("mitra-logos")
-      .getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-  // ---------------------------
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -81,12 +105,34 @@ const ManageMitra = () => {
     try {
       let uploadedLogoUrl = null;
 
-      // Jika ada file yang dipilih, upload dulu
+      // Jika ada file, Convert ke WebP lalu Upload
       if (logoFile) {
-        uploadedLogoUrl = await uploadLogo(logoFile);
+        // 1. Convert
+        const webpFile = await convertImageToWebP(logoFile);
+
+        // 2. Bikin nama file .webp
+        const fileName = `mitra-${Date.now()}-${Math.random().toString(36).substring(2)}.webp`;
+
+        // 3. Upload
+        const { error: uploadError } = await supabase.storage
+          .from("mitra-logos")
+          .upload(fileName, webpFile, {
+            contentType: "image/webp",
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // 4. Ambil URL
+        const { data } = supabase.storage
+          .from("mitra-logos")
+          .getPublicUrl(fileName);
+
+        uploadedLogoUrl = data.publicUrl;
       }
 
-      // Simpan data ke database (termasuk URL logo jika ada)
+      // Simpan ke Database
       const { data, error } = await supabase
         .from("mitra")
         .insert([
@@ -99,11 +145,11 @@ const ManageMitra = () => {
 
       if (error) throw error;
 
-      // Sukses
+      // Sukses & Reset
       setMitraList([data[0], ...mitraList]);
       setNewName("");
       setLogoFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input file HTML
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       alert("Gagal menambah mitra: " + error.message);
       console.error(error);
@@ -112,14 +158,25 @@ const ManageMitra = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Hapus mitra ini?")) return;
+  const handleDelete = async (item) => {
+    if (!confirm(`Hapus mitra "${item.nama_mitra}"? Logo juga akan dihapus.`))
+      return;
 
-    // Catatan: Idealnya kita juga menghapus file gambar dari storage,
-    // tapi untuk saat ini kita hapus datanya di tabel saja agar simpel.
-    const { error } = await supabase.from("mitra").delete().eq("id", id);
-    if (!error) {
-      setMitraList(mitraList.filter((item) => item.id !== id));
+    try {
+      // 1. Hapus Logo dari Storage (jika ada)
+      if (item.logo_url) {
+        await deleteFileFromStorage(item.logo_url);
+      }
+
+      // 2. Hapus Data dari Database
+      const { error } = await supabase.from("mitra").delete().eq("id", item.id);
+
+      if (error) throw error;
+
+      // 3. Update State
+      setMitraList(mitraList.filter((m) => m.id !== item.id));
+    } catch (error) {
+      alert("Gagal menghapus: " + error.message);
     }
   };
 
@@ -166,7 +223,7 @@ const ManageMitra = () => {
               accept="image/*"
               ref={fileInputRef}
               onChange={handleFileChange}
-              className="hidden" // Sembunyikan input asli
+              className="hidden"
               id="logo-upload"
             />
             <label
@@ -182,7 +239,7 @@ const ManageMitra = () => {
               ) : (
                 <>
                   <UploadCloud size={20} />
-                  Pilih Logo (Opsional)
+                  Pilih Logo (Auto WebP)
                 </>
               )}
             </label>
@@ -233,7 +290,7 @@ const ManageMitra = () => {
                   )}
                   {/* Hapus Button (Hover) */}
                   <button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => handleDelete(item)}
                     className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white/80 backdrop-blur hover:bg-red-50 p-1.5 rounded-lg transition opacity-0 group-hover:opacity-100"
                     title="Hapus Mitra"
                   >
