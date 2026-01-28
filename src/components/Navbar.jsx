@@ -69,7 +69,7 @@ const Navbar = () => {
               <span
                 className={`font-bold text-lg leading-none tracking-tight ${navTextColor}`}
               >
-                SMK DIPO 1
+                BKK DIPO 1
               </span>
               <span
                 className={`text-[10px] font-medium tracking-widest uppercase mt-1 ${logoTextSecondary}`}

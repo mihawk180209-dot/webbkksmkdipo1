@@ -2,11 +2,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@theme {
+  /* Set font default aplikasi ke Inter */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-body {
-  overflow-x: hidden; /* Mencegah scroll ke samping pada level halaman utama */
-  width: 100%;
-  position: relative;
-  font-family: "Inter", sans-serif;
-  background-color: #f8fafc;
+  /* Set font khusus heading ke Poppins */
+  --font-heading: "Poppins", sans-serif;
+}
+@layer base {
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    /* Menggunakan variabel --font-sans (Inter) */
+    font-family: var(--font-sans);
+    background-color: #f8fafc;
+  }
+
+  /* Otomatis terapkan Poppins ke semua tag heading */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 700; /* Tebal khas heading */
+  }
 }

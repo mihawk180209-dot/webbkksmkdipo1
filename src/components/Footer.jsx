@@ -156,13 +156,7 @@ const Footer = () => {
       <div className="border-t border-slate-900 bg-slate-950/50">
         <div className="container mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-slate-500 text-xs text-center md:text-left">
-            &copy; {new Date().getFullYear()} BKK SMK Diponegoro 1. Dibuat
-            dengan{" "}
-            <Heart
-              size={12}
-              className="inline text-rose-500 mx-0.5 fill-rose-500"
-            />{" "}
-            di Jakarta.
+            &copy; {new Date().getFullYear()} BKK SMK Diponegoro 1
           </p>
           <div className="flex gap-6 text-xs text-slate-500 font-medium">
             <a href="#" className="hover:text-violet-400 transition-colors">

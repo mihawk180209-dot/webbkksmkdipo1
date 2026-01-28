@@ -63,28 +63,6 @@ const Mitra = () => {
           </p>
 
           {/* Stats Row */}
-          <div className="flex flex-wrap justify-center gap-8 md:gap-16 pt-8 border-t border-white/10 max-w-4xl mx-auto">
-            <div className="text-center">
-              <p className="text-3xl font-extrabold text-white">
-                {loading ? "..." : partners.length + "+"}
-              </p>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">
-                Mitra Aktif
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-extrabold text-white">90%</p>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">
-                Serapan Alumni
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-extrabold text-white">10+</p>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">
-                Tahun Pengalaman
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
