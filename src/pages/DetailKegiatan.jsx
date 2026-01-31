@@ -12,6 +12,7 @@ import {
   AlignLeft,
   Sparkles,
   Info,
+  Building2,
 } from "lucide-react";
 
 const DetailKegiatan = () => {
@@ -26,18 +27,20 @@ const DetailKegiatan = () => {
 
   const fetchEventDetail = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("kegiatan")
-      .select("*")
-      .eq("id", id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("kegiatan")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    if (error) {
-      console.error("Error:", error);
-    } else {
+      if (error) throw error;
       setEvent(data);
+    } catch (error) {
+      console.error("Error fetching event:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAddToCalendar = () => {
@@ -47,6 +50,8 @@ const DetailKegiatan = () => {
     const details = encodeURIComponent(
       `Detail: ${event.deskripsi || ""} \n\nLink: ${window.location.href}`,
     );
+
+    // Format date string safely
     const dateRaw = event.tanggal_event.replace(/-/g, "");
     const timeStart = event.jam_mulai
       ? event.jam_mulai.replace(/:/g, "").substring(0, 4) + "00"
@@ -54,8 +59,10 @@ const DetailKegiatan = () => {
     const timeEnd = event.jam_selesai
       ? event.jam_selesai.replace(/:/g, "").substring(0, 4) + "00"
       : "170000";
+
     const startDate = `${dateRaw}T${timeStart}`;
     const endDate = `${dateRaw}T${timeEnd}`;
+
     const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&location=${location}&sf=true&output=xml`;
     window.open(calendarUrl, "_blank");
   };
@@ -66,10 +73,13 @@ const DetailKegiatan = () => {
       text: `Ikuti kegiatan ${event.nama_event} di SMK Diponegoro 1!`,
       url: window.location.href,
     };
+
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch (err) {}
+      } catch (err) {
+        console.log("Share canceled");
+      }
     } else {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -86,68 +96,70 @@ const DetailKegiatan = () => {
     });
   };
 
-  // Loading State dengan Skeleton sederhana
+  // --- LOADING STATE ---
   if (loading)
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin h-10 w-10 border-4 border-violet-600 border-t-transparent rounded-full"></div>
-          <p className="text-slate-500 animate-pulse">
-            Memuat detail kegiatan...
-          </p>
-        </div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+        <div className="animate-spin h-10 w-10 border-4 border-violet-600 border-t-transparent rounded-full mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">
+          Memuat detail agenda...
+        </p>
       </div>
     );
 
+  // --- NOT FOUND STATE ---
   if (!event)
     return (
-      <div className="min-h-screen pt-32 text-center bg-slate-50 flex flex-col items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 max-w-md">
-          <Info size={48} className="text-slate-300 mx-auto mb-4" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-10 rounded-2xl shadow-xl shadow-slate-200 border border-slate-100 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
+            <Info size={32} />
+          </div>
           <h3 className="text-xl font-bold text-slate-800 mb-2">
             Kegiatan Tidak Ditemukan
           </h3>
-          <p className="text-slate-500 mb-6">
-            Mungkin kegiatan ini sudah dihapus atau link yang Anda tuju salah.
+          <p className="text-slate-500 mb-8 leading-relaxed">
+            Agenda yang Anda cari mungkin telah dihapus, kedaluwarsa, atau
+            tautan yang Anda gunakan salah.
           </p>
           <Link
             to="/kegiatan"
-            className="px-6 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 transition"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all w-full"
           >
-            Kembali ke Agenda
+            <ArrowLeft size={18} /> Kembali ke Agenda
           </Link>
         </div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20 relative overflow-x-hidden">
-      {/* 1. IMMERSIVE HERO HEADER */}
-      <div className="absolute top-0 left-0 w-full h-[500px] bg-slate-900 overflow-hidden z-0">
-        {/* Background Decoration */}
-        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-violet-900/40 via-slate-900/80 to-slate-900 z-10"></div>
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-600 rounded-full blur-[120px] opacity-40 animate-pulse"></div>
-        <div className="absolute top-1/2 left-0 w-72 h-72 bg-indigo-600 rounded-full blur-[100px] opacity-30"></div>
+    <div className="min-h-screen bg-slate-50 font-sans pb-20 relative overflow-x-hidden">
+      {/* 1. IMMERSIVE HERO BACKGROUND */}
+      <div className="absolute top-0 left-0 w-full h-[450px] bg-slate-900 overflow-hidden z-0">
+        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-violet-900/40 via-slate-900/90 to-slate-900 z-10"></div>
+        {/* Decorative elements */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-600 rounded-full blur-[120px] opacity-30"></div>
+        <div className="absolute top-1/2 left-0 w-72 h-72 bg-indigo-600 rounded-full blur-[100px] opacity-20"></div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 relative z-10 pt-28 md:pt-36">
-        {/* Breadcrumb / Back Button */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 pt-28 md:pt-32">
+        {/* Navigation Breadcrumb */}
         <Link
           to="/kegiatan"
-          className="group inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-all duration-300"
+          className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-8 transition-colors group"
         >
-          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-white/20 transition-colors border border-white/10">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors border border-white/5">
             <ArrowLeft size={16} />
           </div>
           <span className="font-medium text-sm tracking-wide">
-            Kembali ke Agenda
+            Kembali ke Daftar
           </span>
         </Link>
 
-        {/* 2. FLOATING CARD CONTAINER */}
+        {/* 2. MAIN CARD CONTAINER */}
         <div className="bg-white rounded-3xl shadow-2xl shadow-slate-200/50 overflow-hidden border border-slate-100 animate-fade-in-up">
-          {/* IMAGE SECTION */}
-          <div className="w-full relative aspect-video md:h-[450px] bg-slate-100 overflow-hidden group">
+          {/* A. EVENT IMAGE HEADER */}
+          <div className="w-full relative aspect-video md:h-[400px] bg-slate-100 overflow-hidden group">
             {event.image_url ? (
               <img
                 src={event.image_url}
@@ -155,132 +167,124 @@ const DetailKegiatan = () => {
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             ) : (
-              // Fallback Image jika tidak ada gambar
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                <Calendar size={64} className="mb-4 opacity-20" />
-                <p className="font-medium">Tidak ada gambar preview</p>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 border-b border-slate-100">
+                <Building2 size={64} className="mb-4 text-slate-300" />
+                <p className="font-medium text-slate-400">
+                  Tidak ada gambar preview
+                </p>
               </div>
             )}
 
-            {/* Overlay Gradient pada Gambar (Bawah) */}
-            <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/60 to-transparent"></div>
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80"></div>
 
-            {/* Kategori Badge di atas Gambar */}
-            <div className="absolute top-6 left-6 md:top-8 md:left-8">
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/90 backdrop-blur-md text-violet-700 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">
+            {/* Category Badge */}
+            <div className="absolute top-6 left-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-md text-violet-700 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border border-white/20">
                 <Sparkles size={12} className="text-amber-500" />
                 Agenda Sekolah
               </span>
             </div>
-          </div>
 
-          {/* CONTENT SECTION */}
-          <div className="px-6 py-8 md:px-12 md:py-12">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-10">
-              <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight flex-1">
+            {/* Title Overlay (Mobile Friendly) */}
+            <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full">
+              <h1 className="text-2xl md:text-4xl font-extrabold text-white leading-tight drop-shadow-md">
                 {event.nama_event}
               </h1>
-
-              {/* Status Indicator (Optional) */}
-              <div className="shrink-0">
-                <span className="inline-flex items-center px-3 py-1 rounded-lg bg-green-50 text-green-700 text-sm font-semibold border border-green-100">
-                  <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-                  Upload By Hubin
-                </span>
-              </div>
             </div>
+          </div>
 
-            {/* 3. INFO GRID (Modern Box Style) */}
+          {/* B. CONTENT BODY */}
+          <div className="px-6 py-8 md:px-10 md:py-10">
+            {/* 3. KEY DETAILS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-              {/* Box Tanggal */}
-              <div className="flex flex-col justify-center p-5 bg-violet-50/50 rounded-2xl border border-violet-100 hover:border-violet-200 transition-colors group">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-white rounded-lg text-violet-600 shadow-sm group-hover:scale-110 transition-transform">
-                    <CalendarDays size={20} />
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {/* Date Block */}
+              <div className="flex items-start gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-3 bg-white rounded-xl text-violet-600 shadow-sm border border-slate-100 shrink-0">
+                  <CalendarDays size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                     Tanggal
                   </p>
+                  <p className="font-bold text-slate-800 text-sm md:text-base">
+                    {formatDateFull(event.tanggal_event)}
+                  </p>
                 </div>
-                <p className="font-bold text-slate-800 ml-1">
-                  {formatDateFull(event.tanggal_event)}
-                </p>
               </div>
 
-              {/* Box Waktu */}
-              <div className="flex flex-col justify-center p-5 bg-pink-50/50 rounded-2xl border border-pink-100 hover:border-pink-200 transition-colors group">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-white rounded-lg text-pink-600 shadow-sm group-hover:scale-110 transition-transform">
-                    <Clock size={20} />
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {/* Time Block */}
+              <div className="flex items-start gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-3 bg-white rounded-xl text-pink-600 shadow-sm border border-slate-100 shrink-0">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                     Waktu
                   </p>
-                </div>
-                <p className="font-bold text-slate-800 ml-1">
-                  {event.jam_mulai
-                    ? `${event.jam_mulai.substring(0, 5)} WIB`
-                    : "-"}{" "}
-                  s/d Selesai
-                </p>
-              </div>
-
-              {/* Box Lokasi */}
-              <div className="flex flex-col justify-center p-5 bg-amber-50/50 rounded-2xl border border-amber-100 hover:border-amber-200 transition-colors group">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-white rounded-lg text-amber-600 shadow-sm group-hover:scale-110 transition-transform">
-                    <MapPin size={20} />
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Lokasi
+                  <p className="font-bold text-slate-800 text-sm md:text-base">
+                    {event.jam_mulai
+                      ? `${event.jam_mulai.substring(0, 5)} WIB`
+                      : "-"}{" "}
+                    s/d Selesai
                   </p>
                 </div>
-                <p
-                  className="font-bold text-slate-800 ml-1 truncate"
-                  title={event.lokasi}
-                >
-                  {event.lokasi}
-                </p>
               </div>
-            </div>
 
-            {/* DESKRIPSI & SIDEBAR LAYOUT */}
-            <div className="flex flex-col lg:flex-row gap-12">
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <AlignLeft size={20} className="text-violet-600" />
-                  Deskripsi Lengkap
-                </h3>
-                <div className="prose prose-lg prose-slate prose-headings:text-slate-800 prose-p:text-slate-600 prose-a:text-violet-600 max-w-none text-justify">
-                  {event.deskripsi ? (
-                    <p className="whitespace-pre-line leading-relaxed">
-                      {event.deskripsi}
-                    </p>
-                  ) : (
-                    <p className="text-slate-400 italic">
-                      Tidak ada deskripsi tambahan.
-                    </p>
-                  )}
+              {/* Location Block */}
+              <div className="flex items-start gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-3 bg-white rounded-xl text-amber-600 shadow-sm border border-slate-100 shrink-0">
+                  <MapPin size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Lokasi
+                  </p>
+                  <p className="font-bold text-slate-800 text-sm md:text-base line-clamp-2">
+                    {event.lokasi}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* 4. ACTION BUTTONS */}
+            {/* 4. DESCRIPTION SECTION */}
+            <div className="flex flex-col gap-6">
+              <div className="border-b border-slate-100 pb-2 mb-2">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <AlignLeft size={20} className="text-slate-400" />
+                  Deskripsi Kegiatan
+                </h3>
+              </div>
+
+              <div className="prose prose-slate prose-p:text-slate-600 prose-headings:text-slate-800 max-w-none">
+                {event.deskripsi ? (
+                  <p className="whitespace-pre-line leading-relaxed text-justify">
+                    {event.deskripsi}
+                  </p>
+                ) : (
+                  <p className="text-slate-400 italic">
+                    Tidak ada deskripsi tambahan untuk kegiatan ini.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 5. ACTION BUTTONS */}
             <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row gap-4">
               <button
                 onClick={handleShare}
-                className="flex-1 px-6 py-4 rounded-xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800 transition-all flex items-center justify-center gap-2 group"
+                className="flex-1 px-6 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all flex items-center justify-center gap-2 group focus:ring-2 focus:ring-slate-200 focus:outline-none"
               >
                 {copied ? (
                   <>
-                    <Check size={20} className="text-green-600" />
-                    <span className="text-green-600">Link Disalin!</span>
+                    <Check size={18} className="text-green-600" />
+                    <span className="text-green-600">Link Tersalin</span>
                   </>
                 ) : (
                   <>
                     <Share2
-                      size={20}
-                      className="group-hover:-translate-y-1 transition-transform"
+                      size={18}
+                      className="group-hover:-translate-y-0.5 transition-transform"
                     />
                     Bagikan Info
                   </>
@@ -289,9 +293,9 @@ const DetailKegiatan = () => {
 
               <button
                 onClick={handleAddToCalendar}
-                className="flex-[2] px-6 py-4 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 hover:shadow-lg hover:shadow-violet-200 transition-all flex items-center justify-center gap-2 group"
+                className="flex-[2] px-6 py-3.5 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 hover:shadow-lg hover:shadow-violet-200 transition-all flex items-center justify-center gap-2 group focus:ring-2 focus:ring-violet-300 focus:outline-none"
               >
-                <Calendar size={20} className="group-hover:animate-pulse" />
+                <Calendar size={18} />
                 Simpan ke Google Calendar
               </button>
             </div>
@@ -299,9 +303,9 @@ const DetailKegiatan = () => {
         </div>
 
         {/* Footer Note */}
-        <p className="text-center text-slate-400 text-sm mt-8 pb-8">
-          Informasi dapat berubah sewaktu-waktu. Hubungi BKK untuk info lebih
-          lanjut.
+        <p className="text-center text-slate-400 text-sm mt-8 pb-12">
+          &copy; {new Date().getFullYear()} SMK Diponegoro 1. Semua hak
+          dilindungi.
         </p>
       </div>
     </div>
