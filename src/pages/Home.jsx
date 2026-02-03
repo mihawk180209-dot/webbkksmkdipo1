@@ -64,17 +64,17 @@ const Home = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="bg-slate-50 min-h-screen overflow-x-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       {/* ================= 1. HERO SECTION ================= */}
-      <section className="relative pt-32 pb-40 lg:pt-48 lg:pb-56 overflow-hidden bg-slate-950">
+      <section className="relative w-full overflow-hidden bg-slate-950">
         {/* Abstract Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-indigo-900/30 rounded-full blur-[120px] opacity-40"></div>
           <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-violet-900/20 rounded-full blur-[100px] opacity-40"></div>
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         </div>
 
-        <div className="container mx-auto px-6 relative z-10 text-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-40 lg:pt-48 lg:pb-56 text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 py-2 px-5 rounded-full bg-slate-900/50 border border-slate-700/50 text-indigo-300 text-xs font-bold tracking-widest uppercase mb-8 backdrop-blur-md shadow-lg">
             <School size={14} className="text-indigo-400" />
